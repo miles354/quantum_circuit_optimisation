@@ -14,9 +14,9 @@ num_gates = 20
 dataset_size = 1000
 
 # Gate sets
-single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 's', 'sdg']
+single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 's', 'sdg', 'u']
 two_qubit_gates = ['cx', 'cz', 'swap']
-three_qubit_gates = ['ccx', 'ccz']
+three_qubit_gates = ['ccx']
 
 ALL_GATES = single_qubit_gates + two_qubit_gates + three_qubit_gates
 
@@ -52,80 +52,116 @@ def apply_nearest_neighbor_cx(circ, q1, q2):
             apply_swap_decomposed(circ, path[i], path[i + 1])
 
 # Native gate decomposition
-def decompose_to_native(circuit):
-    native = QuantumCircuit(circuit.num_qubits)
+def decompose_to_native(circ):
+    native = QuantumCircuit(circ.num_qubits)
 
-    for instr, qargs, _ in circuit.data:
+    for instr, qargs, _ in circ.data:
         gate = instr.name
-        qubits = [circuit.qubits.index(q) for q in qargs]
+        if len(qargs) == 1:
+            qubit = circ.qubits.index(qargs[0])
+        else:
+            qubit = tuple(circ.qubits.index(q) for q in qargs)
 
+# Gate Conditions
         if gate == 'h':
-            native.rz(pi / 2, qubits[0])
-            native.sx(qubits[0])
-            native.rz(pi / 2, qubits[0])
+            native.rz(pi/2, qubit)
+            native.sx(qubit)
+            native.rz(pi/2, qubit)
 
         elif gate == 'x':
-            native.x(qubits[0])
+            native.x(qubit)
 
         elif gate == 'y':
-            native.rz(pi, qubits[0])
-            native.sx(qubits[0])
-            native.rz(pi, qubits[0])
+            native.rz(pi, qubit)
+            native.sx(qubit)
+            native.rz(pi, qubit)
 
         elif gate == 'z':
-            native.rz(pi, qubits[0])
+            native.rz(pi, qubit)
 
         elif gate == 'rx':
             theta = instr.params[0]
-            native.rz(-pi / 2, qubits[0])
-            native.sx(qubits[0])
-            native.rz(theta, qubits[0])
-            native.sx(qubits[0])
-            native.rz(pi / 2, qubits[0])
+            native.rz(-pi/2, qubit)
+            native.sx(qubit)
+            native.rz(theta, qubit)
+            native.sx(qubit)
+            native.rz(pi/2, qubit)
 
         elif gate == 'ry':
             theta = instr.params[0]
-            native.rz(pi / 2, qubits[0])
-            native.sx(qubits[0])
-            native.rz(theta, qubits[0])
-            native.sx(qubits[0])
-            native.rz(-pi / 2, qubits[0])
+            native.rz(pi/2, qubit)
+            native.sx(qubit)
+            native.rz(theta, qubit)
+            native.sx(qubit)
+            native.rz(-pi/2, qubit)
 
         elif gate == 'rz':
-            native.rz(instr.params[0], qubits[0])
+            theta = instr.params[0]
+            native.rz(theta, qubit)
 
         elif gate == 't':
-            native.rz(pi / 4, qubits[0])
+            native.rz(pi/4, qubit)
+
+        elif gate == 'tdg':
+            native.rz(-pi/4, qubit)
 
         elif gate == 's':
-            native.rz(pi / 2, qubits[0])
+            native.rz(pi/2, qubit)
 
         elif gate == 'sdg':
-            native.rz(-pi / 2, qubits[0])
+            native.rz(-pi/2, qubit)
+
+        elif gate == 'u':
+            theta, phi, lam = instr.params
+            native.rz(phi, qubit)
+            native.sx(qubit)
+            native.rz(theta, qubit)
+            native.sx(qubit)
+            native.rz(lam, qubit)
 
         elif gate == 'cx':
-            apply_nearest_neighbor_cx(native, qubits[0], qubits[1])
+            q1, q2 = qubit
+            apply_nearest_neighbor_cx(native, q1, q2)
 
         elif gate == 'cz':
-            q1, q2 = qubits
-            native.rz(pi / 2, q2)
-            native.sx(q2)
-            native.rz(pi / 2, q2)
+            q1, q2 = qubit
+            native.rz(pi/2, qubit)
+            native.sx(qubit)
+            native.rz(pi/2, qubit)
             apply_nearest_neighbor_cx(native, q1, q2)
-            native.rz(pi / 2, q2)
-            native.sx(q2)
-            native.rz(pi / 2, q2)
+            native.rz(pi/2, qubit)
+            native.sx(qubit)
+            native.rz(pi/2, qubit)
 
         elif gate == 'swap':
-            apply_swap_decomposed(native, qubits[0], qubits[1])
+            q1, q2 = qubit
+            apply_nearest_neighbor_cx(native, q1, q2)
+
+
 
         elif gate == 'ccx':
-            native.ccx(*qubits)
-
-        elif gate == 'ccz':
-            native.h(qubits[2])
-            native.ccx(qubits[0], qubits[1], qubits[2])
-            native.h(qubits[2])
+            q1, q2, q3 = qubit
+            # Only handle linear neighbours
+            if abs(q1 - q2) == 1 and abs(q2 - q3) == 1:
+                native.rz(pi/2, q3)
+                native.sx(q3)
+                native.rz(pi/2, q3)
+                apply_nearest_neighbor_cx(native, q2, q3)
+                native.rz(-pi/4, q3)
+                apply_nearest_neighbor_cx(native, q1, q3)
+                native.rz(pi/4, q3)
+                apply_nearest_neighbor_cx(native, q2, q3)
+                native.rz(-pi/4, q3)
+                apply_nearest_neighbor_cx(native, q1, q3)
+                native.rz(pi/4, q2)
+                native.rz(pi/4, q3)
+                native.rz(pi/2, q3)
+                native.sx(q3)
+                native.rz(pi/2, q3)
+                apply_nearest_neighbor_cx(native, q1, q2)
+                native.rz(pi/4, q1)
+                native.rz(-pi/4, q2)
+                apply_nearest_neighbor_cx(native, q1, q2)
 
         else:
             raise ValueError(f"Unhandled gate type: {gate}")
@@ -143,6 +179,9 @@ def generate_random_circuit(num_qubits=6, num_gates=20):
             if gate_type in ['rx', 'ry', 'rz']:
                 angle = random.choice([pi * n / 4 for n in range(1, 9)])
                 getattr(qc, gate_type)(angle, q)
+            elif gate_type == 'u':
+                theta, phi, lam = [random.choice([pi * n/4 for n in range(1, 9)]) for _ in range(3)]
+                qc.u(theta, phi, lam, q)
             else:
                 getattr(qc, gate_type)(q)
 

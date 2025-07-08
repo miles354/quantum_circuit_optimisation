@@ -86,6 +86,8 @@ def decompose_to_native_fully(circ):
         else:
             qubit = tuple(circ.qubits.index(q) for q in qargs)
 
+# Gate conditions
+
         if gate == 'h':
             native.rz(pi/2, qubit)
             native.sx(qubit)
@@ -158,7 +160,9 @@ def decompose_to_native_fully(circ):
 
         elif gate == 'swap':
             q1, q2 = qubit
-            apply_swap_decomposed(native, q1, q2)
+            apply_nearest_neighbor_cx(native, q1, q2)
+
+
 
         elif gate == 'ccx':
             q1, q2, q3 = qubit
@@ -183,6 +187,7 @@ def decompose_to_native_fully(circ):
                 native.rz(pi/4, q1)
                 native.rz(-pi/4, q2)
                 apply_nearest_neighbor_cx(native, q1, q2)
+                
             else:
                 raise ValueError("CCX must be on linear nearest-neighbour qubits")
 
