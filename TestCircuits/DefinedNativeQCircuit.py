@@ -15,7 +15,7 @@ def get_gate_count_vector(qc):
 
 # Parameters
 num_qubits = 6
-num_gates = 50
+num_gates = 30
 
 # Wider gate sets
 single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 'tdg', 's', 'sdg', 'u']
@@ -43,7 +43,7 @@ for _ in range(num_gates):
         getattr(qc, gate_type)(q1, q2)
 
     elif gate_type in three_qubit_gates and num_qubits >= 3:
-        # To avoid ValueError later, force linear neighbours for ccx
+    
         q = random.randint(1, num_qubits - 2)
         q1, q2, q3 = q-1, q, q+1
         qc.ccx(q1, q2, q3)
@@ -187,7 +187,7 @@ def decompose_to_native_fully(circ):
                 native.rz(pi/4, q1)
                 native.rz(-pi/4, q2)
                 apply_nearest_neighbor_cx(native, q1, q2)
-                
+
             else:
                 raise ValueError("CCX must be on linear nearest-neighbour qubits")
 

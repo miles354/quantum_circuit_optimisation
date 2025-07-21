@@ -1,47 +1,51 @@
+# Importing necessary libraries
 import random
 import json
 from math import pi
 import matplotlib.pyplot as plt
 
+from qiskit.qasm3 import dumps as qasm3_dumps
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector, partial_trace
 from qiskit.visualization.bloch import Bloch
 from collections import Counter
 
-# Parameters
+# Parameters for circuit generation
 num_qubits = 6
 num_gates = 20
 dataset_size = 1000
 
-# Gate sets
+# Defining allowed gate types
 single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 's', 'sdg', 'u']
 two_qubit_gates = ['cx', 'cz', 'swap']
 three_qubit_gates = ['ccx']
 
 ALL_GATES = single_qubit_gates + two_qubit_gates + three_qubit_gates
 
+# Converts a circuit into a vector of gate counts
 def get_gate_count_vector(qc, gate_list=ALL_GATES):
     counts = Counter([instr.operation.name for instr in qc.data])
     return [counts.get(g, 0) for g in gate_list]
 
-# Bloch vector calculation
+# Computes Bloch vector components from a single-qubit density matrix
 def get_bloch_components(dm):
     x = 2 * dm.data[0, 1].real
     y = 2 * dm.data[0, 1].imag
     z = dm.data[0, 0].real - dm.data[1, 1].real
     return [x, y, z]
 
-# Helper for decomposing SWAP into native gates
+# Applies SWAP gate using three CNOT gates (for decomposing SWAP into native gates)
 def apply_swap_decomposed(circ, q1, q2):
     circ.cx(q1, q2)
     circ.cx(q2, q1)
     circ.cx(q1, q2)
 
-# Helper for applying CX with nearest-neighbor SWAPs
+# Applies a CX gate using nearest-neighbor SWAP routing if needed
 def apply_nearest_neighbor_cx(circ, q1, q2):
     if abs(q1 - q2) == 1:
         circ.cx(q1, q2)
     else:
+        # Generate SWAP path to bring qubits next to each other
         path = list(range(min(q1, q2), max(q1, q2) + 1))
         if q2 < q1:
             path = path[::-1]
@@ -51,7 +55,7 @@ def apply_nearest_neighbor_cx(circ, q1, q2):
         for i in reversed(range(len(path) - 1)):
             apply_swap_decomposed(circ, path[i], path[i + 1])
 
-# Native gate decomposition
+# Converts a circuit to one using only native gates
 def decompose_to_native(circ):
     native = QuantumCircuit(circ.num_qubits)
 
@@ -62,7 +66,7 @@ def decompose_to_native(circ):
         else:
             qubit = tuple(circ.qubits.index(q) for q in qargs)
 
-# Gate Conditions
+        # Single-qubit gate decompositions
         if gate == 'h':
             native.rz(pi/2, qubit)
             native.sx(qubit)
@@ -119,6 +123,7 @@ def decompose_to_native(circ):
             native.sx(qubit)
             native.rz(lam, qubit)
 
+        # Two-qubit gate decompositions
         elif gate == 'cx':
             q1, q2 = qubit
             apply_nearest_neighbor_cx(native, q1, q2)
@@ -137,12 +142,10 @@ def decompose_to_native(circ):
             q1, q2 = qubit
             apply_nearest_neighbor_cx(native, q1, q2)
 
-
-
+        # Three-qubit gate decomposition for CCX (Toffoli)
         elif gate == 'ccx':
             q1, q2, q3 = qubit
-            # Only handle linear neighbours
-            if abs(q1 - q2) == 1 and abs(q2 - q3) == 1:
+            if abs(q1 - q2) == 1 and abs(q2 - q3) == 1:  # Only handle linear connectivity
                 native.rz(pi/2, q3)
                 native.sx(q3)
                 native.rz(pi/2, q3)
@@ -168,7 +171,7 @@ def decompose_to_native(circ):
 
     return native
 
-# Generate a single random circuit
+# Generates a random quantum circuit with various gates
 def generate_random_circuit(num_qubits=6, num_gates=20):
     qc = QuantumCircuit(num_qubits)
     for _ in range(num_gates):
@@ -195,7 +198,7 @@ def generate_random_circuit(num_qubits=6, num_gates=20):
 
     return qc
 
-# Generate dataset
+# Dataset generation loop
 dataset = []
 
 for i in range(dataset_size):
@@ -204,9 +207,11 @@ for i in range(dataset_size):
 
     native_qc = decompose_to_native(qc)
 
+    # Compute Bloch vectors for each qubit
     reduced_dms = [partial_trace(state, [j for j in range(num_qubits) if j != k]) for k in range(num_qubits)]
     bloch_vectors = [get_bloch_components(dm) for dm in reduced_dms]
 
+    # Construct data dictionary for this sample
     data = {
         "id": i,
         "depth": qc.depth(),
@@ -221,9 +226,10 @@ for i in range(dataset_size):
         "bloch_vectors": bloch_vectors
     }
 
+    data["qasm"] = qasm3_dumps(qc)
     dataset.append(data)
 
-# Save dataset
+# Save dataset to JSON file
 with open("quantum_circuit_dataset_with_native.json", "w") as f:
     json.dump(dataset, f, indent=2, default=str)
 
