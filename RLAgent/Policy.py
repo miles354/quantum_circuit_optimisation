@@ -146,7 +146,7 @@ if __name__ == "__main__":
         n_steps=2048,
         batch_size=64,
         n_epochs=10,
-        gamma=0.99,
+        gamma=0.80,
         clip_range=0.2,
         verbose=1,
     )

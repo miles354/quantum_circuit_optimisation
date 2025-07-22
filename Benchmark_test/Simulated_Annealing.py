@@ -4,9 +4,10 @@ import copy
 from qiskit import QuantumCircuit
 import os
 import sys
+import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from circuit_utils import compute_depth, compute_naive_depth, convert_to_qiskit_circuit, convert_qiskit_to_gate_list
+from circuit_utils import convert_to_qiskit_circuit, convert_qiskit_to_gate_list
 from GateRules.quantum_rules import apply_gate_identity, apply_conjugation_rule, check_commutation
 from dataset_loader import load_circuit_from_dataset
 
@@ -16,6 +17,7 @@ def simplify_gate_list(gate_list):
     while i < len(gate_list):
         g1 = gate_list[i]
 
+        # Try 2-gate identity simplification (e.g., X followed by X cancels)
         if i + 1 < len(gate_list):
             g2 = gate_list[i + 1]
             result = apply_gate_identity(g1, g2)
@@ -26,6 +28,7 @@ def simplify_gate_list(gate_list):
                 i += 2
                 continue
 
+        # Try 3-gate conjugation simplification (e.g., H Z H → X)
         if i + 2 < len(gate_list):
             g2 = gate_list[i + 1]
             g3 = gate_list[i + 2]
@@ -46,10 +49,28 @@ def simplify_gate_list(gate_list):
                         i += 3
                         continue
 
+        # Try commuting gates to bring cancelable pairs together
+        if i + 1 < len(gate_list):
+            g2 = gate_list[i + 1]
+            relation = check_commutation(g1, g2)
+
+            if relation == "commute":
+                # If swapping helps (e.g., to make cancelable gates adjacent later), do it
+                # Caution: don't swap blindly unless needed
+                if i + 2 < len(gate_list):
+                    g3 = gate_list[i + 2]
+                    # Check if g1 and g3 are same and commute with g2
+                    if g1["name"] == g3["name"] and check_commutation(g2, g3) == "commute":
+                        # Swap g1 and g2
+                        gate_list[i], gate_list[i + 1] = g2, g1
+                        continue  # Retry simplification after swap
+
+        # If nothing can be simplified, keep the current gate
         simplified.append(g1)
         i += 1
 
     return simplified
+
 
 def mutate_gate_list(gate_list):
     allowed_angles = [math.pi * n / 4 for n in range(1, 9)]
@@ -107,7 +128,7 @@ def optimize_circuit_with_simulated_annealing(qiskit_circuit):
     return convert_to_qiskit_circuit(optimized_list, num_qubits=qiskit_circuit.num_qubits)
 
 if __name__ == "__main__":
-    original = load_circuit_from_dataset(index=80)
+    original = load_circuit_from_dataset(index=np.random.randint(0,1000)) 
     optimized = optimize_circuit_with_simulated_annealing(original)
 
     print("Original Circuit:")
@@ -131,4 +152,3 @@ if __name__ == "__main__":
     print("Number of Gates in Original Circuit:", len(original_gate_list))
     print("Number of Gates in Optimized Circuit:", len(optimized_gate_list))
 
-    

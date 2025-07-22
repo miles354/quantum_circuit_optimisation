@@ -183,4 +183,3 @@ def check_commutation(g1_info, g2_info):
 
     return None
 
-#

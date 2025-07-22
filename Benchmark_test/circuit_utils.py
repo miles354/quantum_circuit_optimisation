@@ -3,7 +3,7 @@
 import math
 from qiskit import QuantumCircuit
 
-# --- Depth Calculation Functions ---
+# Depth Calculation Functions
 
 # Naive depth calculation: counts 1 per gate, ignoring parallelism
 def compute_naive_depth(gate_list):
@@ -44,7 +44,7 @@ def compute_depth(circuit):
     return depth
 
 
-# --- Qiskit Conversion ---
+# Qiskit Conversion
 
 def convert_to_qiskit_circuit(gate_list, num_qubits=6):
     qc = QuantumCircuit(num_qubits)

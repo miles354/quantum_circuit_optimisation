@@ -102,7 +102,7 @@ class QuantumCircuitEnv(gym.Env):
         # Sample a new original circuit from the dataset
         self.original_circuit = self.generate_random_circuit()
 
-        # Start with a copy of the original gate list as the modifiable one
+        # Start with a copy of the original gate list as a modifiable list
         self.modified_gate_list = self.original_gate_list.copy()
         self.current_step = 0
 
