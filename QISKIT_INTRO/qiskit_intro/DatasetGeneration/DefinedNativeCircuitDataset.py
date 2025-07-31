@@ -4,6 +4,17 @@ import json
 from math import pi
 import matplotlib.pyplot as plt
 
+import os
+
+# Get absolute path to the directory where this script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Define the path to the output folder
+output_dir = os.path.join(script_dir, "..", "DatasetGeneration")
+
+# Ensure the directory exists
+os.makedirs(output_dir, exist_ok=True)
+
 from qiskit.qasm3 import dumps as qasm3_dumps
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector, partial_trace
@@ -12,7 +23,7 @@ from collections import Counter
 
 # Parameters for circuit generation
 num_qubits = 6
-num_gates = 20
+num_gates = 40
 dataset_size = 1000
 
 # Defining allowed gate types
@@ -230,7 +241,10 @@ for i in range(dataset_size):
     dataset.append(data)
 
 # Save dataset to JSON file
-with open("quantum_circuit_dataset_with_native.json", "w") as f:
+
+output_path = os.path.join(output_dir, "quantum_circuit_dataset_with_native.json")
+
+with open(output_path, "w") as f:
     json.dump(dataset, f, indent=2, default=str)
 
-print(f"Generated and saved {dataset_size} circuits with native decompositions to 'quantum_circuit_dataset_with_native.json'")
+print(f"Generated and saved {dataset_size} circuits with native decompositions to '{output_path}'")

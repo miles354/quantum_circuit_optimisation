@@ -66,8 +66,9 @@ def apply_gate_identity(g1_info, g2_info):
 
             if action == "merge":
                 # Merge two rotations into one
-                angle1 = g1_info.get("angle", 0)
-                angle2 = g2_info.get("angle", 0)
+                angle1 = g1_info.get("angle") or (g1_info.get("params", [0])[0])
+                angle2 = g2_info.get("angle") or (g2_info.get("params", [0])[0])
+
                 merged_angle = merge_rotation_angles(angle1, angle2)
                 if merged_angle is None:
                     return ("null", "null")

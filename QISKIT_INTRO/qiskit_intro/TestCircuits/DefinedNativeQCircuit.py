@@ -2,6 +2,10 @@ import random
 from math import pi
 import matplotlib.pyplot as plt
 
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector, partial_trace
 from qiskit.visualization import circuit_drawer
@@ -15,7 +19,7 @@ def get_gate_count_vector(qc):
 
 # Parameters
 num_qubits = 6
-num_gates = 50
+num_gates = 30
 
 # Wider gate sets
 single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 'tdg', 's', 'sdg', 'u']
@@ -52,7 +56,7 @@ print("Original circuit:")
 circuit_img_orig = circuit_drawer(qc, output="mpl")
 circuit_img_orig.tight_layout()
 circuit_img_orig.show()
-circuit_img_orig.savefig("Original_circuit_diagram.png")
+circuit_img_orig.savefig(os.path.join(script_dir, "Original_circuit_diagram.png"))
 
 # Manual helper to fully decompose SWAP into 3 CX gates
 def apply_swap_decomposed(circ, q1, q2):
@@ -197,7 +201,7 @@ print("Decomposed circuit (fully native, manual swaps):")
 circuit_img_native = circuit_drawer(native_qc, output="mpl")
 circuit_img_native.tight_layout()
 circuit_img_native.show()
-circuit_img_native.savefig("DefinedNative_circuit_diagram.png")
+circuit_img_native.savefig(os.path.join(script_dir, "DefinedNative_circuit_diagram.png"))
 
 
 # --- Bloch spheres visualisation (original circuit) ---
@@ -225,7 +229,7 @@ for i, (dm, ax) in enumerate(zip(reduced_dms, axes)):
 
 fig.tight_layout()
 fig.subplots_adjust(top=0.9)
-fig.savefig("Q_bloch_spheres.png")
+fig.savefig(os.path.join(script_dir, "Q_bloch_spheres.png"))
 plt.show()
 
 

@@ -1,6 +1,10 @@
 import random
 from math import pi
 import matplotlib.pyplot as plt
+import os
+
+# Directory where this script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector, partial_trace
@@ -8,8 +12,9 @@ from qiskit.visualization import circuit_drawer
 from qiskit.visualization.bloch import Bloch
 
 # Parameters
-num_qubits = random.randint(5,7)
-num_gates = random.randint(20,40)
+num_qubits = random.randint(5, 7)
+num_gates = random.randint(20, 40)
+
 # Gate options
 single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 's', 'sdg']
 two_qubit_gates = ['cx', 'cz', 'swap']
@@ -36,10 +41,11 @@ for i in range(num_gates):
         q1, q2, q3 = random.sample(range(num_qubits), 3)
         getattr(qc, gate_type)(q1, q2, q3)
 
-# Draw and display the circuit diagram (popup window)
+# Draw and display the circuit diagram
 circuit_img = circuit_drawer(qc, output="mpl")
 circuit_img.tight_layout()
-circuit_img.savefig("RandomQ_circuit_diagram.png")  # Save the circuit diagram
+circuit_path = os.path.join(script_dir, "RandomQ_circuit_diagram.png")
+circuit_img.savefig(circuit_path)
 circuit_img.show()
 
 # Simulate final state
@@ -56,7 +62,7 @@ def get_bloch_components(dm):
     return [x, y, z]
 
 # Save Bloch spheres for all qubits in a grid
-cols = 3  # Number of columns in grid (adjust as you like)
+cols = 3
 rows = (num_qubits + cols - 1) // cols
 fig = plt.figure(figsize=(4 * cols, 4 * rows))
 fig.suptitle("Bloch Spheres for All Qubits", fontsize=16)
@@ -68,12 +74,14 @@ for i, (dm, ax) in enumerate(zip(reduced_dms, axes)):
     b.render()
     ax.set_title(f"Qubit {i}")
 
-fig.tight_layout()
+# fig.tight_layout()  # Avoid for 3D plots
 fig.subplots_adjust(top=0.9)
-fig.savefig("RandomQ_bloch_spheres.png")  # Save the figure
-plt.show()  # Popup showing all Bloch spheres
+bloch_path = os.path.join(script_dir, "RandomQ_bloch_spheres.png")
+fig.savefig(bloch_path)
+plt.show()
 
-# Print some circuit info
+
+# Print circuit info
 depth = qc.depth()
 print("Circuit depth:", depth)
 print("Gate count:", num_gates)
