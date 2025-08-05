@@ -25,11 +25,16 @@ from GateRules.quantum_rules import (
     merge_rotation_angles, GATE_IDENTITIES
 )
 
-def simplify_gate_list(gate_list, max_iterations=1000):
+def simplify_gate_list(gate_list, max_iterations=200):
     simplified = []
     i = 0
     iterations = 0
+    swap_limit = 20  # Limit how many swaps are allowed per simplification run
+    swap_count = 0
+    enable_commutation = True  # Toggle this to disable commutation handling if needed
+
     while i < len(gate_list):
+        iterations += 1
         if iterations > max_iterations:
             print("Max iterations reached in simplify_gate_list.")
             break
@@ -43,12 +48,11 @@ def simplify_gate_list(gate_list, max_iterations=1000):
             if result:
                 r1, _ = result
                 if r1 != "null":
-                    simplified.append(r1)  # Append the simplified gate
-                i += 2  # Skip the next gate as it's cancelled or merged
-                iterations += 1
+                    simplified.append(r1)
+                i += 2
                 continue
 
-        # Apply conjugation simplifications (H X H = Z)
+        # Apply conjugation simplifications (e.g., H X H = Z)
         if i + 2 < len(gate_list):
             g2 = gate_list[i + 1]
             g3 = gate_list[i + 2]
@@ -67,24 +71,21 @@ def simplify_gate_list(gate_list, max_iterations=1000):
                         rep_gate = {"name": rep.lstrip("-"), "qubits": [target]}
                         simplified.append(rep_gate)
                         i += 3
-                        iterations += 1
                         continue
 
-        # Apply commutation and anticommutation simplifications
-        if i + 1 < len(gate_list):
+        # Apply commutation swaps (guarded)
+        if enable_commutation and i + 1 < len(gate_list) and swap_count < swap_limit:
             g2 = gate_list[i + 1]
             relation = check_commutation(g1, g2)
             if relation == "commute":
-                # Swap the gates to reduce depth
                 gate_list[i], gate_list[i + 1] = g2, g1
-                continue
+                swap_count += 1
+                continue  # Retry at same position
 
         simplified.append(g1)
         i += 1
-        iterations += 1
+
     return simplified
-
-
 
 
 def apply_gate_identity(g1_info, g2_info):

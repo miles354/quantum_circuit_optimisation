@@ -1,20 +1,20 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import matplotlib
-matplotlib.use('Agg')  # Non-GUI mode
-
-import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+
 from qiskit import QuantumCircuit
 from qiskit.visualization import circuit_drawer
+
+import gymnasium as gym
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.vec_env import DummyVecEnv
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from RLEnvironment.RLGymEnvironment import QuantumCircuitEnv
 
 
@@ -39,12 +39,8 @@ def visualize_gate_list(gate_list, title="Quantum Circuit", filename=None):
     qc = QuantumCircuit(num_qubits)
 
     for gate_info in gate_list:
-        if isinstance(gate_info, dict):
-            gate = gate_info.get("gate", "")
-            qubits = gate_info.get("qubits", [])
-        else:
-            gate = gate_info
-            qubits = [0]
+        gate = gate_info.get("name", "null")
+        qubits = gate_info.get("qubits", [])
 
         if gate == 'null':
             continue
@@ -72,30 +68,30 @@ def visualize_gate_list(gate_list, title="Quantum Circuit", filename=None):
     fig = circuit_drawer(qc, output='mpl')
     fig.suptitle(title)
     fig.tight_layout()
-
     if filename:
         fig.savefig(filename)
-        print(f"Circuit saved as {filename}")
+        print(f"Saved: {filename}")
     plt.close(fig)
 
 
-def make_env():
+def make_env(check=False):
     dataset_path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        "..", "DatasetGeneration", "converted_rlgym_dataset.json"
+        os.path.dirname(__file__), "..", "DatasetGeneration", "converted_rlgym_dataset.json"
     ))
 
     if not os.path.exists(dataset_path):
         raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
-    env = QuantumCircuitEnv(dataset_path=dataset_path)
-    env = MultiDiscreteToDiscreteWrapper(env)
-    env = DummyVecEnv([lambda: env])
-    return env
+    base_env = QuantumCircuitEnv(dataset_path=dataset_path)
+    wrapped_env = MultiDiscreteToDiscreteWrapper(base_env)
+
+    if check:
+        check_env(wrapped_env, warn=True)
+
+    return DummyVecEnv([lambda: wrapped_env])
 
 
 if __name__ == "__main__":
-    # === Set up output paths ===
     base_dir = os.path.dirname(__file__)
     outputs_dir = os.path.join(base_dir, "outputs")
     circuits_dir = os.path.join(outputs_dir, "circuits")
@@ -106,8 +102,7 @@ if __name__ == "__main__":
     os.makedirs(logs_dir, exist_ok=True)
     os.makedirs(checkpoints_dir, exist_ok=True)
 
-    env = make_env()
-    check_env(env.envs[0], warn=True)
+    env = make_env(check=True)
 
     model = PPO(
         policy="MlpPolicy",
@@ -116,7 +111,7 @@ if __name__ == "__main__":
         n_steps=2048,
         batch_size=64,
         n_epochs=10,
-        gamma=0.80,
+        gamma=0.99,
         clip_range=0.2,
         verbose=1,
     )
@@ -131,25 +126,24 @@ if __name__ == "__main__":
         render=False
     )
 
-    model.learn(total_timesteps=10_000, callback=eval_callback)
+    model.learn(total_timesteps=10000, callback=eval_callback)
     model.save(os.path.join(outputs_dir, "ppo_quantum_rl"))
-    print("\nModel saved as 'ppo_quantum_rl.zip'")
 
+    print("\nModel saved.")
+
+    # Evaluate
     model = PPO.load(os.path.join(outputs_dir, "ppo_quantum_rl"), env=env)
 
     episode_rewards = []
-
     for ep in range(5):
-        obs = env.reset()
-        obs = obs[0]
-        info = {}
-
-        total_reward = 0
+        obs, _ = env.reset()
         done = False
+        total_reward = 0
+        info = {}
 
         while not done:
             action, _ = model.predict(obs, deterministic=True)
-            obs, reward, done, info = env.step([action])
+            obs, reward, done, _, info = env.step([action])
             obs = obs[0]
             reward = reward[0]
             done = done[0]
@@ -157,26 +151,11 @@ if __name__ == "__main__":
             total_reward += reward
 
         episode_rewards.append(total_reward)
-        print(f"\nEpisode {ep + 1} Total Reward: {total_reward}")
+        print(f"\nEpisode {ep+1} - Reward: {total_reward}")
+        visualize_gate_list(info["original"], title=f"Original_{ep+1}", filename=os.path.join(circuits_dir, f"original_{ep+1}.png"))
+        visualize_gate_list(info["modified"], title=f"Modified_{ep+1}", filename=os.path.join(circuits_dir, f"modified_{ep+1}.png"))
 
-        original = info.get("original", [])
-        modified = info.get("modified", [])
-
-        print("Original Circuit:", original)
-        print("Modified Circuit:", modified)
-
-        visualize_gate_list(
-            original,
-            title=f"Episode_{ep+1}_Original",
-            filename=os.path.join(circuits_dir, f"episode_{ep+1}_original.png")
-        )
-        visualize_gate_list(
-            modified,
-            title=f"Episode_{ep+1}_Modified",
-            filename=os.path.join(circuits_dir, f"episode_{ep+1}_modified.png")
-        )
-
-    # Save rewards plot
+    # Plot
     plt.figure()
     plt.plot(range(1, len(episode_rewards) + 1), episode_rewards)
     plt.xlabel("Episode")

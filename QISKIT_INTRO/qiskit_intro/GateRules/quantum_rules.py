@@ -161,25 +161,14 @@ ANTICOMMUTE_RULES = [
 ]
 
 def check_commutation(g1_info, g2_info):
-    # Check commutation or anticommutation relationship between two gates
-    for rule in COMMUTE_RULES:
-        if {g1_info["name"], g2_info["name"]} == {rule["gate1"], rule["gate2"]}:
-            cond = rule["condition"]
-            if cond == "same_target" and acts_on_same_target(g1_info, g2_info):
-                return "commute"
-            if cond == "disjoint_qubits":
-                # Check if all involved qubits are disjoint
-                all_qubits_1 = set(g1_info.get("qubits", [])) | {g1_info.get("control"), g1_info.get("target")}
-                all_qubits_2 = set(g2_info.get("qubits", [])) | {g2_info.get("control"), g2_info.get("target")}
-                if all_qubits_1.isdisjoint(all_qubits_2):
-                    return "commute"
-            if cond == "same_control_and_target":
-                if g1_info.get("control") == g2_info.get("control") and g1_info.get("target") == g2_info.get("target"):
-                    return "commute"
 
-    for rule in ANTICOMMUTE_RULES:
-        if {g1_info["name"], g2_info["name"]} == {rule["gate1"], rule["gate2"]}:
-            if rule["condition"] == "same_qubit" and acts_on_same_qubit(g1_info, g2_info):
-                return "anticommute"
+    if g1_info["name"] == g2_info["name"]:
+        if gates_act_on_same_qubits(g1_info, g2_info):
+            return "commute"
+        if not set(g1_info.get("qubits", [])).intersection(set(g2_info.get("qubits", []))):
+            return "commute"
+    if acts_on_same_target(g1_info, g2_info):
+        return "anticommute"
 
-    return None
+    return "none"
+
