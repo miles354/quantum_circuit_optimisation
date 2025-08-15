@@ -1,0 +1,71 @@
+# Import necessary libraries
+import json
+from qiskit.qasm3 import loads
+from qiskit import QuantumCircuit
+import os
+
+# Get the current script’s directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Convert a QuantumCircuit object to a list of gates with their respective qubit indices
+def circuit_to_gate_list(qc: QuantumCircuit):
+    gate_list = []
+    for instr, qargs, _ in qc.data:
+        gate_name = instr.name
+        qubits = [qc.qubits.index(q) for q in qargs]
+        gate_list.append({"gate": gate_name, "qubits": qubits})
+    return gate_list
+
+# Convert a list of circuits to JSON by extracting gate-level data
+def convert_circuits_to_json(circuits, output_path):
+    dataset = []
+    for qc in circuits:
+        gate_list = circuit_to_gate_list(qc)
+        entry = {
+            "circuit_diagram": gate_list,
+            "num_qubits": qc.num_qubits,
+            "depth": qc.depth(),
+            "size": qc.size()
+        }
+        dataset.append(entry)
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, "w") as f:
+        json.dump(dataset, f, indent=2)
+
+    print(f"Saved {len(dataset)} circuits to {output_path}")
+
+# Load circuits from a JSON dataset with QASM3 circuits
+def load_circuits_from_dataset(path):
+    with open(path, "r") as f:
+        raw_data = json.load(f)
+
+    circuits = []
+    for entry in raw_data:
+        qasm_str = entry.get("qasm") or entry.get("native_qasm")
+        if not qasm_str:
+            print(f"Skipping entry without QASM data: ID={entry.get('id', '?')}")
+            continue
+
+        try:
+            qc = loads(qasm_str)
+            circuits.append(qc)
+        except Exception as e:
+            print(f"Error loading circuit ID={entry.get('id', '?')}: {e}")
+
+    return circuits
+
+# Main execution
+if __name__ == "__main__":
+    dataset_path = os.path.join(script_dir, "quantum_circuit_dataset_with_native.json")
+
+    circuits = load_circuits_from_dataset(dataset_path)
+
+    if not circuits:
+        print("No circuits loaded. Ensure the dataset includes valid 'qasm' entries.")
+    else:
+        output_path = os.path.abspath(
+            os.path.join(script_dir, "..", "DatasetGeneration", "converted_rlgym_dataset.json")
+        )
+        convert_circuits_to_json(circuits, output_path)
