@@ -25,7 +25,7 @@ from GateRules.quantum_rules import (
     merge_rotation_angles, GATE_IDENTITIES
 )
 
-def simplify_gate_list(gate_list, max_iterations=200):
+def simplify_gate_list(gate_list, max_iterations=1000):
     simplified = []
     i = 0
     iterations = 0
@@ -329,6 +329,9 @@ def show_bloch_spheres(qc, title_prefix="", filename=None):
 
 # === MAIN EXECUTION ===
 if __name__ == "__main__":
+    seed = 1239
+    np.random.seed(seed)
+    random.seed(seed)
     original = load_circuit_from_dataset(index=np.random.randint(0, 100))
     optimized = optimize_circuit_with_simulated_annealing(original)
 

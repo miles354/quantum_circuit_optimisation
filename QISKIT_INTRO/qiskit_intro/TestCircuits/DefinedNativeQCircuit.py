@@ -18,8 +18,8 @@ def get_gate_count_vector(qc):
     return dict(counts)
 
 # Parameters
-num_qubits = 6
-num_gates = 30
+num_qubits = 3
+num_gates = 12
 
 # Wider gate sets
 single_qubit_gates = ['h', 'x', 'y', 'z', 'rx', 'ry', 'rz', 't', 'tdg', 's', 'sdg', 'u']

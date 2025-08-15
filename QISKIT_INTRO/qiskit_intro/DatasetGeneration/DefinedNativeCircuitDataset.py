@@ -22,8 +22,8 @@ from qiskit.visualization.bloch import Bloch
 from collections import Counter
 
 # Parameters for circuit generation
-num_qubits = 6
-num_gates = 40
+num_qubits = 3
+num_gates = 20
 dataset_size = 1000
 
 # Defining allowed gate types
